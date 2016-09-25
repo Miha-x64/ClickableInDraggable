@@ -1,10 +1,13 @@
 package net.aquadc.interaction;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 
 /**
  * Created by miha on 04.08.16
@@ -13,8 +16,13 @@ public class DragTouchListener implements View.OnTouchListener {
 
     private final View draggable;
     private final GestureDetectorCompat gd;
+    private final WindowManager windowManager;
 
-    DragTouchListener(@NonNull View draggable, @NonNull final View.OnClickListener listener) {
+    public DragTouchListener(@NonNull View draggable, @NonNull final View.OnClickListener listener) {
+        this(draggable, listener, null);
+    }
+
+    public DragTouchListener(@NonNull View draggable, @NonNull final View.OnClickListener listener, @Nullable WindowManager windowManager) {
         this.draggable = draggable;
 
         this.gd = new GestureDetectorCompat(draggable.getContext(),
@@ -26,9 +34,11 @@ public class DragTouchListener implements View.OnTouchListener {
                         return true;
                     }
                 });
+        this.windowManager = windowManager;
     }
 
-    private float startX, startY;
+    private float startTouchX, startTouchY;
+    private int initialLayX, initialLayY;
     private float dX, dY;
     private boolean frozen;
     private View pressed;
@@ -41,13 +51,17 @@ public class DragTouchListener implements View.OnTouchListener {
                 frozen = true;
                 pressed = view;
                 gd.onTouchEvent(event);
-                startX = event.getRawX();
-                startY = event.getRawY();
+                startTouchX = event.getRawX();
+                startTouchY = event.getRawY();
+                if (draggable.getLayoutParams() instanceof WindowManager.LayoutParams && windowManager != null) {
+                    initialLayX = ((WindowManager.LayoutParams) draggable.getLayoutParams()).x;
+                    initialLayY = ((WindowManager.LayoutParams) draggable.getLayoutParams()).y;
+                }
                 return true;
 
             case MotionEvent.ACTION_MOVE:
                 if (frozen) {
-                    if (sqr(event.getRawX() - startX) + sqr(event.getRawY() - startY) > 60f) {
+                    if (sqr(event.getRawX() - startTouchX) + sqr(event.getRawY() - startTouchY) > 60f) {
                         dX = draggable.getX() - event.getRawX();
                         dY = draggable.getY() - event.getRawY();
                         frozen = false;
@@ -55,11 +69,20 @@ public class DragTouchListener implements View.OnTouchListener {
                         gd.onTouchEvent(event);
                     }
                 } else {
-                    draggable.animate()
-                            .x(event.getRawX() + dX)
-                            .y(event.getRawY() + dY)
-                            .setDuration(0)
-                            .start();
+                    if (draggable.getLayoutParams() instanceof WindowManager.LayoutParams && windowManager != null) {
+                        WindowManager.LayoutParams lp = (WindowManager.LayoutParams) draggable.getLayoutParams();
+                        lp.gravity = Gravity.TOP | Gravity.LEFT;
+                        lp.x = initialLayX + (int) (event.getRawX() - startTouchX);
+                        lp.y = initialLayY + (int) (event.getRawY() - startTouchY);
+                        windowManager.updateViewLayout(draggable, lp);
+                        System.out.println(lp);
+                    } else {
+                        draggable.animate()
+                                .x(event.getRawX() + dX)
+                                .y(event.getRawY() + dY)
+                                .setDuration(0)
+                                .start();
+                    }
                 }
                 return true;
 
