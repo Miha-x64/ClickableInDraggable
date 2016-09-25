@@ -75,7 +75,6 @@ public class DragTouchListener implements View.OnTouchListener {
                         lp.x = initialLayX + (int) (event.getRawX() - startTouchX);
                         lp.y = initialLayY + (int) (event.getRawY() - startTouchY);
                         windowManager.updateViewLayout(draggable, lp);
-                        System.out.println(lp);
                     } else {
                         draggable.animate()
                                 .x(event.getRawX() + dX)
